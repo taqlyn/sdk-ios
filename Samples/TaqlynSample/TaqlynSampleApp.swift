@@ -1,7 +1,7 @@
 import SwiftUI
 import TaqlynSDK
 
-/// Proof harness — configures SdkCore early. Feature code imports TaqlynSDK only.
+/// Proof harness — configures SdkCore early. Feature UI may import TaqlynSDK + TaqlynNavSwiftUI (not OS kits).
 @main
 struct TaqlynSampleApp: App {
     init() {

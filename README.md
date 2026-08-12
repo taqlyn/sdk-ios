@@ -9,8 +9,9 @@ Swift SdkCore + thin adapters for Universal Links, pasteboard, resolve HTTP, and
 | Path | Role |
 |------|------|
 | `Sources/TaqlynSDK/` | Swift package library — public `SdkCore` + adapters |
-| `Samples/TaqlynSample/` | SwiftUI proof harness (imports **TaqlynSDK only**) |
+| `Samples/TaqlynSample/` | SwiftUI proof harness (imports **TaqlynSDK + TaqlynNavSwiftUI**) |
 | `Tests/TaqlynSDKTests/` | Unit + sample source-guard tests |
+| `Tests/TaqlynSDKNavIntegrationTests/` | Map → navigate → double-nav integration (depends on `../nav-swiftui`) |
 
 ## Public API
 
@@ -38,7 +39,7 @@ SdkCore.onOpenURL(url)              // forward Universal Links / custom URLs
 | `Adapters/ResolveClient.swift` | `ResolveClient.resolve()` | `URLSession` `POST /v1/resolve` |
 | `Adapters/KeyValueStore.swift` | `KeyValueStore` | `UserDefaults` |
 
-Sample / app feature modules import `TaqlynSDK` (`SdkCore`) only.
+Sample / app feature modules import `TaqlynSDK` (`SdkCore`) and optionally `TaqlynNavSwiftUI` — never OS clipboard kits.
 
 ## Usage
 
@@ -66,10 +67,19 @@ struct MyApp: App {
   }
 }
 
-// Navigate once:
+// Navigate once (with TaqlynNavSwiftUI DeepLinkNavigator):
 Task {
   for await link in SdkCore.observeLinks() {
-    // navigate
+    let navLink = TaqlynNavSwiftUI.DeferredLink(
+      url: link.url,
+      path: link.path,
+      params: link.params,
+      linkId: link.linkId,
+      matchType: TaqlynNavSwiftUI.MatchType(rawValue: link.matchType.rawValue) ?? .none,
+      isDeferred: link.isDeferred,
+      campaign: link.campaign.map { TaqlynNavSwiftUI.Campaign($0.values) }
+    )
+    _ = navigator.navigate(navLink, path: &path) // rebuilds NavigationStack path
     SdkCore.consume(link.linkId)
   }
 }
@@ -132,7 +142,8 @@ Coverage includes:
 - ready-gate holds pending until `setReadyForNavigation(true)`
 - warm UL via `onOpenURL` delivers on `observeLinks`
 - `resolveClaim` works
-- sample sources do not reference `UIPasteboard`
+- sample sources do not reference `UIPasteboard` (may import TaqlynSDK + TaqlynNavSwiftUI)
+- nav integration: map SdkCore `DeferredLink` → nav `DeferredLink`, navigate once, second same `linkId` blocked
 
 ## Real-device Universal Link / clipboard proof
 

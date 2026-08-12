@@ -13,6 +13,9 @@ let package = Package(
             targets: ["TaqlynSDK"]
         ),
     ],
+    dependencies: [
+        .package(path: "../nav-swiftui"),
+    ],
     targets: [
         .target(
             name: "TaqlynSDK",
@@ -25,6 +28,14 @@ let package = Package(
             name: "TaqlynSDKTests",
             dependencies: ["TaqlynSDK"],
             path: "Tests/TaqlynSDKTests"
+        ),
+        .testTarget(
+            name: "TaqlynSDKNavIntegrationTests",
+            dependencies: [
+                "TaqlynSDK",
+                .product(name: "TaqlynNavSwiftUI", package: "nav-swiftui"),
+            ],
+            path: "Tests/TaqlynSDKNavIntegrationTests"
         ),
     ]
 )

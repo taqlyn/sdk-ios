@@ -1,6 +1,8 @@
 # Taqlyn Sample (SwiftUI)
 
-Proof harness for `packages/sdk-ios`. Imports **TaqlynSDK / SdkCore only** — never OS clipboard or URLSession types directly.
+Proof harness for `packages/sdk-ios`. Imports **TaqlynSDK + TaqlynNavSwiftUI** — never OS clipboard or URLSession types directly.
+
+Uses `NavigationStack` + `DeepLinkNavigator`: on `SdkCore.observeLinks`, maps `TaqlynSDK.DeferredLink` → `TaqlynNavSwiftUI.DeferredLink`, navigates (path rebuild), then `SdkCore.consume`.
 
 ## Associated Domains
 
@@ -18,7 +20,7 @@ Host a valid AASA at `https://your-go-host.example.com/.well-known/apple-app-sit
 
 ## Run notes
 
-This folder is a lightweight source sketch. Wire it into an Xcode app target that depends on the local `TaqlynSDK` Swift package, or open `Package.swift` and add a sample executable target later.
+This folder is a lightweight source sketch. Wire it into an Xcode app target that depends on the local `TaqlynSDK` and `TaqlynNavSwiftUI` Swift packages, or open `Package.swift` and add a sample executable target later.
 
 Environment overrides (optional):
 

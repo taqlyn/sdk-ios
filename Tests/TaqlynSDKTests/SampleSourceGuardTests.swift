@@ -1,7 +1,8 @@
 import Foundation
 import XCTest
 
-/// Ensures sample / feature harness sources never import UIPasteboard types.
+/// Ensures sample / feature harness sources never import OS clipboard kits.
+/// Feature harness may import TaqlynSDK + TaqlynNavSwiftUI (not UIPasteboard / UIKit pasteboard).
 final class SampleSourceGuardTests: XCTestCase {
     func testSampleSources_doNotReferenceUIPasteboard() throws {
         let sampleRoot = try locateSampleRoot()
