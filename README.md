@@ -1,2 +1,149 @@
-# sdk-ios
-Taqlyn iOS SDK (Swift) — SdkCore + Universal Links / pasteboard
+# Taqlyn iOS SDK (`sdk-ios`)
+
+Swift SdkCore + thin adapters for Universal Links, pasteboard, resolve HTTP, and local prefs.
+
+**Branch:** `integrate/phase-05-ios-sdk` (not `main`).
+
+## Modules
+
+| Path | Role |
+|------|------|
+| `Sources/TaqlynSDK/` | Swift package library — public `SdkCore` + adapters |
+| `Samples/TaqlynSample/` | SwiftUI proof harness (imports **TaqlynSDK only**) |
+| `Tests/TaqlynSDKTests/` | Unit + sample source-guard tests |
+
+## Public API
+
+```swift
+SdkCore.configure(clientId, publicKeyId, options, …)
+SdkCore.resolveDeferred()           // DeferredLink?
+SdkCore.resolveClaim(_ token)       // DeferredLink? — authenticated claim path
+SdkCore.observeLinks()              // AsyncStream<DeferredLink>
+SdkCore.consume(linkId)
+SdkCore.setReadyForNavigation(ready)
+SdkCore.onOpenURL(url)              // forward Universal Links / custom URLs
+```
+
+`SdkOptions` includes `apiBaseUrl`, optional `linkProcessingMode` (`.all` | `.webOnly` | `.deferredOnly`), and optional `env`.
+
+`DeferredLink` mirrors `packages/sdk-contract`: `url`, `path`, `params`, `linkId`, `matchType`, `isDeferred`, `campaign`.
+
+## Wrappers (feature code must not import vendors)
+
+| Adapter | Interface | Hides |
+|---------|-----------|--------|
+| `Adapters/IncomingLink.swift` | `IncomingLink.observe()` / `onOpenURL` | Universal Links / `onOpenURL` |
+| `Adapters/Pasteboard.swift` | `PasteboardClient.readToken()` | `UIPasteboard` |
+| `Adapters/AppClipBridge.swift` | `AppClipBridge.readInvocation()` | App Clip / App Group (stub) |
+| `Adapters/ResolveClient.swift` | `ResolveClient.resolve()` | `URLSession` `POST /v1/resolve` |
+| `Adapters/KeyValueStore.swift` | `KeyValueStore` | `UserDefaults` |
+
+Sample / app feature modules import `TaqlynSDK` (`SdkCore`) only.
+
+## Usage
+
+```swift
+@main
+struct MyApp: App {
+  init() {
+    SdkCore.configure(
+      clientId: "app_test_…",
+      publicKeyId: "pk_test_…",
+      options: SdkOptions(apiBaseUrl: "https://api.example.com")
+    )
+  }
+
+  var body: some Scene {
+    WindowGroup {
+      RootView()
+        .onOpenURL { SdkCore.onOpenURL($0) }
+        .task {
+          // After splash / auth:
+          _ = await SdkCore.resolveDeferred()
+          SdkCore.setReadyForNavigation(true)
+        }
+    }
+  }
+}
+
+// Navigate once:
+Task {
+  for await link in SdkCore.observeLinks() {
+    // navigate
+    SdkCore.consume(link.linkId)
+  }
+}
+```
+
+### Deferred cascade (iOS)
+
+`resolveDeferred()` tries, soft-skipping each step on deny/empty/error (never crashes):
+
+1. **App Clip** invocation (`AppClipBridge.readInvocation`) — Phase 05 ships a stub returning `nil`
+2. **Clipboard** token (`PasteboardClient.readToken`)
+3. If neither yields a token → set local resolved-once flag and return `nil`
+
+Authenticated claim is **not** auto-called. After sign-in (or when product has a claim token), call:
+
+```swift
+_ = await SdkCore.resolveClaim(token)
+```
+
+Same resolved-once flag and ready-gate as `resolveDeferred`. Alternatively inject a `Pasteboard` fake that returns the claim token, or a custom `ResolveClient`.
+
+### Resolve request body
+
+```json
+{
+  "clientId": "…",
+  "publicKeyId": "…",
+  "clipboard": "…",
+  "claim": "…",
+  "appClip": "…",
+  "env": "sandbox"
+}
+```
+
+Only non-empty active fields are sent (empty `referrer` is omitted). Response is parsed as `{ "deferredLink": { … } | null }`.
+
+## PrivacyInfo.xcprivacy
+
+Shipped as a package resource (`Sources/TaqlynSDK/PrivacyInfo.xcprivacy`):
+
+- `NSPrivacyAccessedAPICategoryUserDefaults` reason **CA92.1** (resolved-once flag via `UserDefaults`)
+- No ATT / IDFA / fingerprinting by default
+- Clipboard access is policy-sensitive (paste prompts on modern iOS). Document pasteboard usage in your app’s privacy disclosures; pasteboard is **not** a Required Reason API category today — declare honestly if Apple expands the catalog.
+
+See `docs/research/compliance/privacy-and-store-policy.md` in the monorepo.
+
+## Unit tests
+
+From this directory:
+
+```bash
+swift test
+```
+
+Coverage includes:
+
+- resolve-once + local flag → second call `nil`
+- soft failure does **not** set flag
+- empty / denied pasteboard soft-skip → `nil` + flag (no crash)
+- ready-gate holds pending until `setReadyForNavigation(true)`
+- warm UL via `onOpenURL` delivers on `observeLinks`
+- `resolveClaim` works
+- sample sources do not reference `UIPasteboard`
+
+## Real-device Universal Link / clipboard proof
+
+**Simulators can exercise UL and pasteboard, but App Store first-open is best on a real device.**
+
+1. Host AASA for your go-domain; enable Associated Domains (`applinks:…`) on the sample.
+2. Open a Universal Link while the app is installed → confirm `observeLinks` delivers path/params (`isDeferred=false`).
+3. For deferred: place a clipboard token (product opt-in), fresh-install / first launch, confirm `resolveDeferred()` once; second launch returns `nil`.
+4. Deny paste when prompted → confirm soft-skip (no crash); use `resolveClaim` for authenticated recovery.
+5. Confirm sample/feature code has zero `UIPasteboard` imports (`SampleSourceGuardTests`).
+
+## Branch
+
+Develop on `integrate/phase-05-ios-sdk` (not `main`).
