@@ -120,11 +120,13 @@ Only non-empty active fields are sent (empty `referrer` is omitted). Response is
 
 Shipped as a package resource (`Sources/TaqlynSDK/PrivacyInfo.xcprivacy`):
 
+- `NSPrivacyTracking` = **false** (deferred routing is not ATT tracking)
 - `NSPrivacyAccessedAPICategoryUserDefaults` reason **CA92.1** (resolved-once flag via `UserDefaults`)
-- No ATT / IDFA / fingerprinting by default
-- Clipboard access is policy-sensitive (paste prompts on modern iOS). Document pasteboard usage in your app’s privacy disclosures; pasteboard is **not** a Required Reason API category today — declare honestly if Apple expands the catalog.
+- Pasteboard: `UIPasteboardPasteboard` may read clipboard for opt-in deferred tokens. Pasteboard is **not** a Required Reason API category today — document paste prompts in the host app’s privacy policy; declare honestly if Apple expands the catalog.
+- **No fingerprinting as iOS primary** — cascade is App Clip → clipboard → claim → null (see monorepo `docs/guides/privacy.md`)
+- No ATT / IDFA by default
 
-See `docs/research/compliance/privacy-and-store-policy.md` in the monorepo.
+See `docs/research/compliance/privacy-and-store-policy.md` and `docs/guides/privacy.md` in the monorepo.
 
 ## Unit tests
 
