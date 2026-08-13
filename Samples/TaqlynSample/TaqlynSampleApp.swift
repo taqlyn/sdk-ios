@@ -10,7 +10,7 @@ struct TaqlynSampleApp: App {
             publicKeyId: ProcessInfo.processInfo.environment["TAQLYN_PUBLIC_KEY_ID"] ?? "pk_test_demo",
             options: SdkOptions(
                 apiBaseUrl: ProcessInfo.processInfo.environment["TAQLYN_API_BASE_URL"]
-                    ?? "https://api.example.test",
+                    ?? SdkOptions.defaultAPIBaseURL,
                 linkProcessingMode: .all,
                 env: "sandbox"
             )

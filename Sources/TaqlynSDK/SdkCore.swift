@@ -19,24 +19,59 @@ public enum SdkCore {
         pasteboard: PasteboardClient? = nil,
         appClip: AppClipBridge? = nil,
         resolveClient: ResolveClient? = nil,
+        shareClient: ShareClient? = nil,
         store keyValueStore: KeyValueStore? = nil,
         incomingLink: IncomingLink? = nil
     ) {
         precondition(!clientId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "clientId required")
         precondition(!publicKeyId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "publicKeyId required")
-        precondition(!options.apiBaseUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "options.apiBaseUrl required")
 
         let config = Config(
             clientId: clientId,
             publicKeyId: publicKeyId,
-            options: options,
+            options: options.apiBaseUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? SdkOptions(
+                    apiBaseUrl: SdkOptions.defaultAPIBaseURL,
+                    linkProcessingMode: options.linkProcessingMode,
+                    env: options.env
+                )
+                : options,
             pasteboard: pasteboard ?? UIPasteboardPasteboard(),
             appClip: appClip ?? StubAppClipBridge(),
             resolveClient: resolveClient ?? URLSessionResolveClient(),
+            shareClient: shareClient ?? URLSessionShareClient(),
             store: keyValueStore ?? UserDefaultsKeyValueStore(),
             incomingLink: incomingLink ?? ContinuationsIncomingLink()
         )
         Self.store.configure(config)
+    }
+
+    /// Mint a unified short link for in-app sharing (public key id only).
+    public static func createShareLink(
+        destinationPath: String? = nil,
+        destinationWeb: String? = nil,
+        params: [String: String]? = nil,
+        ogTitle: String? = nil,
+        ogDescription: String? = nil,
+        ogImage: String? = nil
+    ) async throws -> ShareLink {
+        guard let config = store.config() else {
+            throw ShareLinkError.notConfigured
+        }
+        return try await config.shareClient.create(
+            ShareLinkRequest(
+                apiBaseUrl: config.options.apiBaseUrl,
+                clientId: config.clientId,
+                publicKeyId: config.publicKeyId,
+                destinationPath: destinationPath,
+                destinationWeb: destinationWeb,
+                params: params,
+                env: config.options.env,
+                ogTitle: ogTitle,
+                ogDescription: ogDescription,
+                ogImage: ogImage
+            )
+        )
     }
 
     /// Resolve deferred link once after install (App Clip → clipboard cascade).
@@ -71,6 +106,17 @@ public enum SdkCore {
                 appClip: nil
             )
         }
+    }
+
+    /// iOS-only custom listener (UL + clipboard / App Clip / claim). Prefer this in UIKit hosts.
+    /// SwiftUI can keep using `observeLinks()` or this listener — both share the ready-gate.
+    @discardableResult
+    public static func addLinkListener(_ listener: TaqlynLinkListener) -> UUID {
+        SdkCoreListeners.add(listener)
+    }
+
+    public static func removeLinkListener(_ id: UUID) {
+        SdkCoreListeners.remove(id)
     }
 
     /// Stream of warm Universal Links and deferred links (deferred gated by ready flag).
@@ -122,6 +168,7 @@ public enum SdkCore {
     // MARK: - Test hooks
 
     public static func resetForTests() {
+        SdkCoreListeners.reset()
         store.reset()
     }
 
@@ -232,6 +279,7 @@ private struct Config: @unchecked Sendable {
     let pasteboard: PasteboardClient
     let appClip: AppClipBridge
     let resolveClient: ResolveClient
+    let shareClient: ShareClient
     let store: KeyValueStore
     let incomingLink: IncomingLink
 }

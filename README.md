@@ -17,15 +17,17 @@ Swift SdkCore + thin adapters for Universal Links, pasteboard, resolve HTTP, and
 
 ```swift
 SdkCore.configure(clientId, publicKeyId, options, …)
+SdkCore.createShareLink(destinationPath:)  // ShareLink — in-app sharing
 SdkCore.resolveDeferred()           // DeferredLink?
 SdkCore.resolveClaim(_ token)       // DeferredLink? — authenticated claim path
+SdkCore.addLinkListener(_:)         // iOS-only TaqlynLinkListener (UL + clipboard)
 SdkCore.observeLinks()              // AsyncStream<DeferredLink>
 SdkCore.consume(linkId)
 SdkCore.setReadyForNavigation(ready)
 SdkCore.onOpenURL(url)              // forward Universal Links / custom URLs
 ```
 
-`SdkOptions` includes `apiBaseUrl`, optional `linkProcessingMode` (`.all` | `.webOnly` | `.deferredOnly`), and optional `env`.
+`SdkOptions.apiBaseUrl` defaults to `SdkOptions.defaultAPIBaseURL` (`https://api.rutvik.qzz.io`); pass it only to self-host. Optional `linkProcessingMode` (`.all` | `.webOnly` | `.deferredOnly`) and `env`.
 
 `DeferredLink` mirrors `packages/sdk-contract`: `url`, `path`, `params`, `linkId`, `matchType`, `isDeferred`, `campaign`.
 
@@ -50,7 +52,7 @@ struct MyApp: App {
     SdkCore.configure(
       clientId: "app_test_…",
       publicKeyId: "pk_test_…",
-      options: SdkOptions(apiBaseUrl: "https://api.example.com")
+      options: SdkOptions() // or apiBaseUrl: "https://api.self-host.example"
     )
   }
 

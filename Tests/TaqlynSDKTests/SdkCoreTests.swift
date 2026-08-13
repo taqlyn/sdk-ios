@@ -172,6 +172,38 @@ final class SdkCoreTests: XCTestCase {
         XCTAssertNil(seen?.clipboard)
     }
 
+    func testIosLinkListener_clipboardDeferredAndSkipsReferrer() async {
+        XCTAssertTrue(
+            isIosPlatformLink(sampleLink("c", matchType: .clipboard))
+        )
+        XCTAssertFalse(
+            isIosPlatformLink(sampleLink("r", matchType: .installReferrer))
+        )
+
+        let link = sampleLink("lnk_listener", matchType: .clipboard)
+        configureWith(
+            pasteboard: FixedPasteboard(token: "tok_listener"),
+            resolve: { _ in ResolveOutcome.matched(link) }
+        )
+
+        let box = ListenerBox()
+        let id = SdkCore.addLinkListener(box)
+        defer { SdkCore.removeLinkListener(id) }
+
+        _ = await SdkCore.resolveDeferred()
+        SdkCore.setReadyForNavigation(true)
+
+        let delivered = expectation(description: "ios listener")
+        box.onReceive = { delivered.fulfill() }
+        // If already delivered synchronously, fulfill immediately.
+        if box.last?.linkId == "lnk_listener" {
+            delivered.fulfill()
+        }
+        await fulfillment(of: [delivered], timeout: 2.0)
+        XCTAssertEqual(box.last?.matchType, .clipboard)
+        XCTAssertEqual(box.last?.isDeferred, true)
+    }
+
     func testParseNestedDeferredLink() {
         let json: [String: Any] = [
             "linkId": "lnk_nested",
@@ -215,6 +247,20 @@ final class SdkCoreTests: XCTestCase {
             isDeferred: true,
             campaign: Campaign(["utm_source": "invite"])
         )
+    }
+}
+
+private final class ListenerBox: TaqlynLinkListener, @unchecked Sendable {
+    private let lock = NSLock()
+    private(set) var last: DeferredLink?
+    var onReceive: (() -> Void)?
+
+    func taqlynDidReceiveLink(_ link: DeferredLink) {
+        lock.lock()
+        last = link
+        let cb = onReceive
+        lock.unlock()
+        cb?()
     }
 }
 

@@ -66,17 +66,51 @@ public enum LinkProcessingMode: Sendable, Equatable {
 
 /// Configure options for `SdkCore.configure`.
 public struct SdkOptions: Sendable {
+    /// Hosted API origin. Self-host: pass `apiBaseUrl`.
+    public static let defaultAPIBaseURL = "https://api.rutvik.qzz.io"
+
     public var apiBaseUrl: String
     public var linkProcessingMode: LinkProcessingMode
     public var env: String?
 
     public init(
-        apiBaseUrl: String,
+        apiBaseUrl: String = SdkOptions.defaultAPIBaseURL,
         linkProcessingMode: LinkProcessingMode = .all,
         env: String? = nil
     ) {
-        self.apiBaseUrl = apiBaseUrl
+        let trimmed = apiBaseUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let base = trimmed.isEmpty ? SdkOptions.defaultAPIBaseURL : apiBaseUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+        if base.hasSuffix("/") {
+            self.apiBaseUrl = String(base.dropLast())
+        } else {
+            self.apiBaseUrl = base.isEmpty ? SdkOptions.defaultAPIBaseURL : base
+        }
         self.linkProcessingMode = linkProcessingMode
         self.env = env
     }
+}
+
+/// Unified short link minted from the mobile SDK (public key id only).
+public struct ShareLink: Sendable, Equatable {
+    public var id: String
+    public var code: String
+    public var shortUrl: String
+    public var host: String
+    public var env: String
+
+    public init(id: String, code: String, shortUrl: String, host: String, env: String) {
+        self.id = id
+        self.code = code
+        self.shortUrl = shortUrl
+        self.host = host
+        self.env = env
+    }
+}
+
+public enum ShareLinkError: Error, Sendable, Equatable {
+    case notConfigured
+    case invalidInput(String)
+    case httpStatus(Int)
+    case decode
 }
