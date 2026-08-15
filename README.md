@@ -1,5 +1,7 @@
 # Taqlyn iOS SDK (`sdk-ios`)
 
+**Full guide:** [iOS cookbook](../../apps/docs/content/platforms/ios.md) on the docs site.
+
 Swift SdkCore + thin adapters for Universal Links, pasteboard, resolve HTTP, and local prefs.
 
 **Branch:** `integrate/phase-05-ios-sdk` (not `main`).
