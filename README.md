@@ -29,7 +29,7 @@ SdkCore.setReadyForNavigation(ready)
 SdkCore.onOpenURL(url)              // forward Universal Links / custom URLs
 ```
 
-`SdkOptions.apiBaseUrl` defaults to `SdkOptions.defaultAPIBaseURL` (`https://api.rutvik.qzz.io`); pass it only to self-host. Optional `linkProcessingMode` (`.all` | `.webOnly` | `.deferredOnly`) and `env`.
+`SdkOptions.apiBaseUrl` defaults to `SdkOptions.defaultAPIBaseURL` (`https://api.taqlyn.com`); pass it only to self-host. Optional `linkProcessingMode` (`.all` | `.webOnly` | `.deferredOnly`) and `env`.
 
 `DeferredLink` mirrors `packages/sdk-contract`: `url`, `path`, `params`, `linkId`, `matchType`, `isDeferred`, `campaign`.
 
@@ -44,6 +44,43 @@ SdkCore.onOpenURL(url)              // forward Universal Links / custom URLs
 | `Adapters/KeyValueStore.swift` | `KeyValueStore` | `UserDefaults` |
 
 Sample / app feature modules import `TaqlynSDK` (`SdkCore`) and optionally `TaqlynNavSwiftUI` — never OS clipboard kits.
+
+## Installation
+
+### Swift Package Manager (Recommended)
+
+In Xcode: **File → Add Package Dependencies...**, enter `https://github.com/taqlyn/sdk-ios.git`, and select `TaqlynSDK`.
+
+Or add to your `Package.swift`:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/taqlyn/sdk-ios.git", from: "0.1.0"),
+]
+```
+
+### CocoaPods
+
+Add `TaqlynSDK` to your `Podfile` (`iOS 16.0+` with `use_frameworks!`):
+
+```ruby
+platform :ios, '16.0'
+use_frameworks!
+
+target 'MyApp' do
+  pod 'TaqlynSDK', '~> 0.1.0'
+  # Optional SwiftUI navigation helper:
+  # pod 'TaqlynNavSwiftUI', '~> 0.1.0'
+end
+```
+
+Then run:
+
+```bash
+pod install
+```
+
+Open the generated `.xcworkspace` in Xcode.
 
 ## Usage
 

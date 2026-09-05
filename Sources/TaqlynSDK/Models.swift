@@ -67,7 +67,7 @@ public enum LinkProcessingMode: Sendable, Equatable {
 /// Configure options for `SdkCore.configure`.
 public struct SdkOptions: Sendable {
     /// Hosted API origin. Self-host: pass `apiBaseUrl`.
-    public static let defaultAPIBaseURL = "https://api.rutvik.qzz.io"
+    public static let defaultAPIBaseURL = "https://api.taqlyn.com"
 
     public var apiBaseUrl: String
     public var linkProcessingMode: LinkProcessingMode

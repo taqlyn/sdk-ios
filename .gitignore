@@ -1,6 +1,19 @@
+# SwiftPM build artifacts
 .build/
 .swiftpm/
+
+# Xcode
 *.xcodeproj/
 xcuserdata/
 DerivedData/
+*.xcworkspace/
+*.xcuserstate
+
+# IDE & OS
 .DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+*.log
