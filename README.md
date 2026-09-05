@@ -198,6 +198,12 @@ Coverage includes:
 4. Deny paste when prompted → confirm soft-skip (no crash); use `resolveClaim` for authenticated recovery.
 5. Confirm sample/feature code has zero `UIPasteboard` imports (`SampleSourceGuardTests`).
 
+## CI/CD & SPM Distribution
+
+Published via `.github/workflows/publish.yml`:
+- **Swift Package Manager (SPM):** Xcode and `swift package` resolve directly from Git release tags (`v*`). **Zero secrets required.**
+- **CocoaPods Trunk (Optional):** Automatically validates podspec and pushes to CocoaPods Trunk when `COCOAPODS_TRUNK_TOKEN` is present in GitHub Secrets.
+
 ## Branch
 
 Develop on `integrate/phase-05-ios-sdk` (not `main`).
