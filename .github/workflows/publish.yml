@@ -1,8 +1,7 @@
 name: Publish iOS SDK (SPM & CocoaPods)
 
-# Swift Package Manager (SPM) is decentralized and driven directly by Git tags.
-# When a release/tag is published, Xcode and `swift package` resolve it via Git.
-# SPM requires ZERO secrets. CocoaPods Trunk publishing runs if COCOAPODS_TRUNK_TOKEN is provided.
+# Phase 1 native core. Publish this before RN, Flutter, and TaqlynNavSwiftUI.
+# SPM is Git-tag based (no secrets). CocoaPods Trunk runs when COCOAPODS_TRUNK_TOKEN is set.
 
 on:
   release:
