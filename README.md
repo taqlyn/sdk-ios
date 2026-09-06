@@ -77,10 +77,10 @@ end
 Then run:
 
 ```bash
-pod install
+pod install --repo-update
 ```
 
-Open the generated `.xcworkspace` in Xcode.
+Open the generated `.xcworkspace` in Xcode (never open the `.xcodeproj` directly).
 
 ## Usage
 
@@ -203,6 +203,80 @@ Coverage includes:
 Published via `.github/workflows/publish.yml`:
 - **Swift Package Manager (SPM):** Xcode and `swift package` resolve directly from Git release tags (`v*`). **Zero secrets required.**
 - **CocoaPods Trunk (Optional):** Automatically validates podspec and pushes to CocoaPods Trunk when `COCOAPODS_TRUNK_TOKEN` is present in GitHub Secrets.
+
+## CocoaPods Publishing & Trunk Submission Guide
+
+`TaqlynSDK` is officially published to CocoaPods Trunk ([cocoapods.org/pods/TaqlynSDK](https://cocoapods.org/pods/TaqlynSDK)) using `TaqlynSDK.podspec`.
+
+### 1. Specification & Privacy Manifest
+- **Platform:** `iOS 16.0+`, Swift `5.9+`.
+- **Git tag matching:** The podspec sets `:git => 'https://github.com/taqlyn/sdk-ios.git', :tag => "v#{s.version}"`. Release tags in Git MUST have the `v` prefix matching `s.version` (e.g. `v0.1.0`).
+- **Apple Privacy Manifest:** Bundled via `s.resource_bundles = { 'TaqlynSDK_Privacy' => ['Sources/TaqlynSDK/PrivacyInfo.xcprivacy'] }` to ensure CocoaPods compiles `PrivacyInfo.xcprivacy` for Apple Required Reason API compliance (`UserDefaults` CA92.1).
+
+### 2. Pre-Submission Linting & Validation
+Run linting from `packages/sdk-ios`:
+
+```bash
+# Fast JSON AST validation (checks syntax without Xcode build)
+pod ipc spec TaqlynSDK.podspec > /dev/null
+
+# Local workspace validation (validates against local files)
+pod lib lint TaqlynSDK.podspec --allow-warnings
+
+# Remote tag validation (validates that Git tag exists on GitHub and builds in a sandbox)
+pod spec lint TaqlynSDK.podspec --allow-warnings
+```
+
+### 3. Git Release Tagging
+Ensure changes are committed and pushed with the semantic version tag before submitting:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+### 4. CocoaPods Trunk Account Registration
+CocoaPods uses passwordless email session authentication:
+
+```bash
+# Register maintainer email on Trunk (first-time only)
+pod trunk register dev@taqlyn.com "Taqlyn Platform Team" --description="Taqlyn Release Machine"
+
+# Verify the confirmation link sent to your inbox, then confirm session:
+pod trunk me
+```
+
+### 5. Publishing to CocoaPods Trunk
+Once `pod spec lint` passes and the tag is live on GitHub:
+
+```bash
+pod trunk push TaqlynSDK.podspec --allow-warnings
+```
+
+### 6. Automated CI/CD Publishing
+This repository automates CocoaPods publishing via `.github/workflows/publish.yml`:
+1. Retrieve your trunk token:
+   ```bash
+   pod trunk print-token
+   ```
+2. In GitHub, add repository secret `COCOAPODS_TRUNK_TOKEN`.
+3. Whenever a release tag (`v*`) is pushed, GitHub Actions runs `swift test`, validates the privacy manifest, and runs `pod trunk push TaqlynSDK.podspec --allow-warnings`.
+
+### 7. Managing Owners & Collaborators
+To grant other maintainers or CI bots push access:
+
+```bash
+# Add collaborator
+pod trunk add-owner TaqlynSDK teammate@taqlyn.com
+
+# List current pod owners and metrics
+pod trunk info TaqlynSDK
+```
+
+### 8. Troubleshooting & Common Pitfalls
+- **`[!] The tag does not exist`:** The Git release tag (`v0.1.0`) was not pushed to GitHub or was pushed under a different naming convention. Push `git push origin v0.1.0`.
+- **`[!] Missing Privacy Manifest`:** Ensure `Sources/TaqlynSDK/PrivacyInfo.xcprivacy` is present and declared under `s.resource_bundles`.
+- **`[!] Pod not found immediately after push`:** CocoaPods uses a CDN. It can take 5–15 minutes to propagate. Run `pod install --repo-update`.
 
 ## Branch
 
