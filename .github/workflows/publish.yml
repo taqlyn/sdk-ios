@@ -47,6 +47,9 @@ jobs:
     name: Publish to CocoaPods Trunk
     needs: publish-spm
     runs-on: macos-14
+    environment:
+      name: cocoapods
+      url: https://cocoapods.org/pods/TaqlynSDK
     env:
       COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
     steps:
