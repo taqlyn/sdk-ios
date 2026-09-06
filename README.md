@@ -13,7 +13,7 @@ Swift SdkCore + thin adapters for Universal Links, pasteboard, resolve HTTP, and
 | `Sources/TaqlynSDK/` | Swift package library — public `SdkCore` + adapters |
 | `Samples/TaqlynSample/` | SwiftUI proof harness (imports **TaqlynSDK + TaqlynNavSwiftUI**) |
 | `Tests/TaqlynSDKTests/` | Unit + sample source-guard tests |
-| `Tests/TaqlynSDKNavIntegrationTests/` | Map → navigate → double-nav integration (depends on `../nav-swiftui`) |
+| `Tests/TaqlynSDKNavIntegrationTests/` | Map → navigate → double-nav integration (enabled only when `../nav-swiftui` exists in the platform monorepo) |
 
 ## Public API
 
@@ -29,7 +29,7 @@ SdkCore.setReadyForNavigation(ready)
 SdkCore.onOpenURL(url)              // forward Universal Links / custom URLs
 ```
 
-`SdkOptions.apiBaseUrl` defaults to `SdkOptions.defaultAPIBaseURL` (`https://api.taqlyn.com`); pass it only to self-host. Optional `linkProcessingMode` (`.all` | `.webOnly` | `.deferredOnly`) and `env`.
+`SdkOptions` accepts optional `linkProcessingMode` (`.all` | `.webOnly` | `.deferredOnly`) and `env`. The control-plane origin is `https://api.taqlyn.com`.
 
 `DeferredLink` mirrors `packages/sdk-contract`: `url`, `path`, `params`, `linkId`, `matchType`, `isDeferred`, `campaign`.
 
@@ -91,7 +91,7 @@ struct MyApp: App {
     SdkCore.configure(
       clientId: "app_test_…",
       publicKeyId: "pk_test_…",
-      options: SdkOptions() // or apiBaseUrl: "https://api.self-host.example"
+      options: SdkOptions()
     )
   }
 

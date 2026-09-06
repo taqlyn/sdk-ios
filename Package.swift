@@ -1,5 +1,27 @@
 // swift-tools-version: 5.9
+import Foundation
 import PackageDescription
+
+// Published `taqlyn/sdk-ios` must not require a sibling checkout.
+// Nav integration tests run only in the platform monorepo.
+let localNav = "../nav-swiftui"
+let hasLocalNav = FileManager.default.fileExists(atPath: localNav + "/Package.swift")
+
+var packageDependencies: [Package.Dependency] = []
+var extraTargets: [Target] = []
+if hasLocalNav {
+    packageDependencies.append(.package(path: localNav))
+    extraTargets.append(
+        .testTarget(
+            name: "TaqlynSDKNavIntegrationTests",
+            dependencies: [
+                "TaqlynSDK",
+                .product(name: "TaqlynNavSwiftUI", package: "nav-swiftui"),
+            ],
+            path: "Tests/TaqlynSDKNavIntegrationTests"
+        )
+    )
+}
 
 let package = Package(
     name: "TaqlynSDK",
@@ -13,9 +35,7 @@ let package = Package(
             targets: ["TaqlynSDK"]
         ),
     ],
-    dependencies: [
-        .package(path: "../nav-swiftui"),
-    ],
+    dependencies: packageDependencies,
     targets: [
         .target(
             name: "TaqlynSDK",
@@ -29,13 +49,5 @@ let package = Package(
             dependencies: ["TaqlynSDK"],
             path: "Tests/TaqlynSDKTests"
         ),
-        .testTarget(
-            name: "TaqlynSDKNavIntegrationTests",
-            dependencies: [
-                "TaqlynSDK",
-                .product(name: "TaqlynNavSwiftUI", package: "nav-swiftui"),
-            ],
-            path: "Tests/TaqlynSDKNavIntegrationTests"
-        ),
-    ]
+    ] + extraTargets
 )

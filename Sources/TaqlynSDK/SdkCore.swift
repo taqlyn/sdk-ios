@@ -29,13 +29,7 @@ public enum SdkCore {
         let config = Config(
             clientId: clientId,
             publicKeyId: publicKeyId,
-            options: options.apiBaseUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                ? SdkOptions(
-                    apiBaseUrl: SdkOptions.defaultAPIBaseURL,
-                    linkProcessingMode: options.linkProcessingMode,
-                    env: options.env
-                )
-                : options,
+            options: options,
             pasteboard: pasteboard ?? UIPasteboardPasteboard(),
             appClip: appClip ?? StubAppClipBridge(),
             resolveClient: resolveClient ?? URLSessionResolveClient(),
@@ -60,7 +54,7 @@ public enum SdkCore {
         }
         return try await config.shareClient.create(
             ShareLinkRequest(
-                apiBaseUrl: config.options.apiBaseUrl,
+                apiBaseUrl: TaqlynAPI.origin,
                 clientId: config.clientId,
                 publicKeyId: config.publicKeyId,
                 destinationPath: destinationPath,
@@ -223,7 +217,7 @@ public enum SdkCore {
 
         let outcome = await config.resolveClient.resolve(
             ResolveRequest(
-                apiBaseUrl: config.options.apiBaseUrl,
+                apiBaseUrl: TaqlynAPI.origin,
                 clientId: config.clientId,
                 publicKeyId: config.publicKeyId,
                 clipboard: clipboard,

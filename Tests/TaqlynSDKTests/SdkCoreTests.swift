@@ -228,7 +228,7 @@ final class SdkCoreTests: XCTestCase {
         SdkCore.configure(
             clientId: "app_test_demo",
             publicKeyId: "pk_test_demo",
-            options: SdkOptions(apiBaseUrl: "https://api.example.test"),
+            options: SdkOptions(),
             pasteboard: pasteboard,
             appClip: appClip,
             resolveClient: ClosureResolveClient(resolve),

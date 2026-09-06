@@ -6,7 +6,7 @@ Uses `NavigationStack` + `DeepLinkNavigator`: on `SdkCore.observeLinks`, maps `T
 
 ## Public demo API
 
-Default `apiBaseUrl` is `https://api.rutvik.qzz.io` (Cloudflare Tunnel). Seed credentials:
+The SDK talks to `https://api.taqlyn.com`. Seed credentials:
 
 ```bash
 # repo root
@@ -18,7 +18,6 @@ Environment overrides:
 
 | Variable | Meaning |
 |----------|---------|
-| `TAQLYN_API_BASE_URL` | API origin (default `https://api.rutvik.qzz.io`) |
 | `TAQLYN_CLIENT_ID` | Sandbox `app_test_*` |
 | `TAQLYN_PUBLIC_KEY_ID` | `pk_test_*` |
 
@@ -42,7 +41,6 @@ This folder is a lightweight source sketch. Wire it into an Xcode app target tha
 
 Scheme → Run → Arguments → Environment Variables:
 
-- `TAQLYN_API_BASE_URL` = `https://api.rutvik.qzz.io`
 - `TAQLYN_CLIENT_ID` / `TAQLYN_PUBLIC_KEY_ID` from `demo-seed.sh`
 
 See [docs/guides/public-demo.md](../../../../docs/guides/public-demo.md).

@@ -64,28 +64,22 @@ public enum LinkProcessingMode: Sendable, Equatable {
     case deferredOnly
 }
 
-/// Configure options for `SdkCore.configure`.
-public struct SdkOptions: Sendable {
-    /// Hosted API origin. Self-host: pass `apiBaseUrl`.
-    public static let defaultAPIBaseURL = "https://api.taqlyn.com"
+/// Hosted control-plane origin. Not overridable from app code.
+enum TaqlynAPI {
+    static let origin = "https://api.taqlyn.com"
+}
 
-    public var apiBaseUrl: String
+/// Configure options for `SdkCore.configure`.
+///
+/// The control-plane origin is baked into the SDK (`https://api.taqlyn.com`).
+public struct SdkOptions: Sendable {
     public var linkProcessingMode: LinkProcessingMode
     public var env: String?
 
     public init(
-        apiBaseUrl: String = SdkOptions.defaultAPIBaseURL,
         linkProcessingMode: LinkProcessingMode = .all,
         env: String? = nil
     ) {
-        let trimmed = apiBaseUrl.trimmingCharacters(in: .whitespacesAndNewlines)
-            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        let base = trimmed.isEmpty ? SdkOptions.defaultAPIBaseURL : apiBaseUrl.trimmingCharacters(in: .whitespacesAndNewlines)
-        if base.hasSuffix("/") {
-            self.apiBaseUrl = String(base.dropLast())
-        } else {
-            self.apiBaseUrl = base.isEmpty ? SdkOptions.defaultAPIBaseURL : base
-        }
         self.linkProcessingMode = linkProcessingMode
         self.env = env
     }
