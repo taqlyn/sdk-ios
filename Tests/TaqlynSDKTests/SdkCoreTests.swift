@@ -103,11 +103,11 @@ final class SdkCoreTests: XCTestCase {
         )
 
         let expectation = expectation(description: "warm link")
-        var received: DeferredLink?
+        let box = LinkBox()
         let task = Task {
             for await link in SdkCore.observeLinks() {
                 if link.linkId == "lnk_warm" {
-                    received = link
+                    box.set(link)
                     expectation.fulfill()
                     break
                 }
@@ -124,6 +124,7 @@ final class SdkCoreTests: XCTestCase {
         await fulfillment(of: [expectation], timeout: 2.0)
         task.cancel()
 
+        let received = box.value
         XCTAssertEqual(received?.path, "/offer")
         XCTAssertEqual(received?.params["sku"], "42")
         XCTAssertEqual(received?.isDeferred, false)
@@ -278,5 +279,22 @@ private final class DeliveryBox: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return flag
+    }
+}
+
+private final class LinkBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var link: DeferredLink?
+
+    func set(_ value: DeferredLink) {
+        lock.lock()
+        link = value
+        lock.unlock()
+    }
+
+    var value: DeferredLink? {
+        lock.lock()
+        defer { lock.unlock() }
+        return link
     }
 }
