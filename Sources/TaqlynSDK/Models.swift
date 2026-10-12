@@ -35,6 +35,7 @@ public enum MatchType: String, Sendable, Equatable {
     case clipboard
     case appClip = "app_clip"
     case claim
+    case fingerprint
     case none
 
     public static func fromWire(_ value: String?) -> MatchType {
@@ -69,19 +70,90 @@ enum TaqlynAPI {
     static let origin = "https://api.taqlyn.com"
 }
 
+/// Gap 1 — short-link expand UX.
+public enum ResolveMode: String, Sendable, Equatable {
+    case awaitMode = "await"
+    case optimistic
+
+    public static func fromWire(_ value: String?) -> ResolveMode? {
+        guard let value else { return nil }
+        return ResolveMode(rawValue: value)
+    }
+}
+
+/// Response from POST /v1/links/expand.
+public struct ExpandResult: Sendable, Equatable {
+    public var linkId: String
+    public var code: String
+    public var host: String
+    public var destinationPath: String
+    public var params: [String: String]
+    public var url: String
+    public var linkResolveMode: ResolveMode?
+    public var appResolveMode: ResolveMode?
+    public var appExpandTimeoutMs: Int?
+
+    public init(
+        linkId: String,
+        code: String,
+        host: String,
+        destinationPath: String,
+        params: [String: String] = [:],
+        url: String,
+        linkResolveMode: ResolveMode? = nil,
+        appResolveMode: ResolveMode? = nil,
+        appExpandTimeoutMs: Int? = nil
+    ) {
+        self.linkId = linkId
+        self.code = code
+        self.host = host
+        self.destinationPath = destinationPath
+        self.params = params
+        self.url = url
+        self.linkResolveMode = linkResolveMode
+        self.appResolveMode = appResolveMode
+        self.appExpandTimeoutMs = appExpandTimeoutMs
+    }
+}
+
+/// Nav target after expand / path-map.
+public struct ResolvedNavTarget: Sendable, Equatable {
+    public var href: String
+    public var linkId: String?
+    public var pendingExpand: Bool
+
+    public init(href: String, linkId: String? = nil, pendingExpand: Bool = false) {
+        self.href = href
+        self.linkId = linkId
+        self.pendingExpand = pendingExpand
+    }
+}
+
 /// Configure options for `SdkCore.configure`.
 ///
 /// The control-plane origin is baked into the SDK (`https://api.taqlyn.com`).
 public struct SdkOptions: Sendable {
     public var linkProcessingMode: LinkProcessingMode
     public var env: String?
+    public var resolveMode: ResolveMode?
+    public var fallbackPath: String?
+    public var hosts: [String]
+    public var timeoutMs: Int
 
     public init(
         linkProcessingMode: LinkProcessingMode = .all,
-        env: String? = nil
+        env: String? = nil,
+        resolveMode: ResolveMode? = nil,
+        fallbackPath: String? = "/",
+        hosts: [String] = [],
+        timeoutMs: Int = 1500
     ) {
         self.linkProcessingMode = linkProcessingMode
         self.env = env
+        self.resolveMode = resolveMode
+        self.fallbackPath = fallbackPath
+        self.hosts = hosts
+        self.timeoutMs = timeoutMs
     }
 }
 

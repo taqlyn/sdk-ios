@@ -19,7 +19,9 @@ public enum SdkCore {
         pasteboard: PasteboardClient? = nil,
         appClip: AppClipBridge? = nil,
         resolveClient: ResolveClient? = nil,
+        expandClient: ExpandClient? = nil,
         shareClient: ShareClient? = nil,
+        eventsClient: EventsClient? = nil,
         store keyValueStore: KeyValueStore? = nil,
         incomingLink: IncomingLink? = nil
     ) {
@@ -33,11 +35,54 @@ public enum SdkCore {
             pasteboard: pasteboard ?? UIPasteboardPasteboard(),
             appClip: appClip ?? StubAppClipBridge(),
             resolveClient: resolveClient ?? URLSessionResolveClient(),
+            expandClient: expandClient ?? URLSessionExpandClient(),
             shareClient: shareClient ?? URLSessionShareClient(),
+            eventsClient: eventsClient ?? URLSessionEventsClient(),
             store: keyValueStore ?? UserDefaultsKeyValueStore(),
             incomingLink: incomingLink ?? ContinuationsIncomingLink()
         )
         Self.store.configure(config)
+    }
+
+    /// Expand a short URL to an in-app path (`POST /v1/links/expand`).
+    public static func resolveShortLink(_ url: String) async -> ExpandResult? {
+        guard let config = store.config() else { return nil }
+        let outcome = await config.expandClient.expand(
+            ExpandRequest(
+                apiBaseUrl: TaqlynAPI.origin,
+                clientId: config.clientId,
+                publicKeyId: config.publicKeyId,
+                url: url,
+                env: config.options.env
+            )
+        )
+        switch outcome {
+        case .ok(let result): return result
+        case .notFound, .softFailure: return nil
+        }
+    }
+
+    /// Map an incoming URL using hosts + short-code heuristic and resolveMode cascade.
+    public static func resolveIncomingUrl(_ url: String) async -> ResolvedNavTarget? {
+        guard let config = store.config() else { return pathMapOnly(url) }
+        guard shouldExpand(url, hosts: config.options.hosts) else {
+            return pathMapOnly(url)
+        }
+        let fallback = (config.options.fallbackPath?.isEmpty == false)
+            ? (config.options.fallbackPath ?? "/")
+            : "/"
+        let clientMode = config.options.resolveMode ?? .awaitMode
+        if clientMode == .optimistic {
+            return ResolvedNavTarget(href: fallback, pendingExpand: true)
+        }
+        let timeoutMs = max(100, config.options.timeoutMs)
+        let result = await withTimeout(ms: timeoutMs) {
+            await resolveShortLink(url)
+        }
+        if let result {
+            return ResolvedNavTarget(href: hrefFromExpand(result), linkId: result.linkId)
+        }
+        return ResolvedNavTarget(href: fallback)
     }
 
     /// Mint a unified short link for in-app sharing (public key id only).
@@ -144,9 +189,48 @@ public enum SdkCore {
         }
     }
 
+    /// Report that the SDK opened/consumed a link (fire-and-forget).
+    public static func trackOpen(_ linkId: String) {
+        guard let config = store.config() else { return }
+        let id = linkId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else { return }
+        Task {
+            await config.eventsClient.trackOpen(
+                OpenEventRequest(
+                    apiBaseUrl: TaqlynAPI.origin,
+                    clientId: config.clientId,
+                    publicKeyId: config.publicKeyId,
+                    linkId: id,
+                    anonymousId: store.anonymousUserId(),
+                    env: config.options.env
+                )
+            )
+        }
+    }
+
+    /// Custom SDK analytics event (fire-and-forget).
+    public static func logEvent(_ name: String, data: [String: String]? = nil) {
+        guard let config = store.config() else { return }
+        let eventName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !eventName.isEmpty else { return }
+        Task {
+            await config.eventsClient.logEvent(
+                SdkEventRequest(
+                    apiBaseUrl: TaqlynAPI.origin,
+                    clientId: config.clientId,
+                    publicKeyId: config.publicKeyId,
+                    name: eventName,
+                    data: data,
+                    env: config.options.env
+                )
+            )
+        }
+    }
+
     /// Clear pending deferred link when `linkId` matches.
     public static func consume(_ linkId: String) {
         store.consume(linkId)
+        trackOpen(linkId)
     }
 
     /// When true, deliver any pending deferred link to `observeLinks` once.
@@ -273,9 +357,70 @@ private struct Config: @unchecked Sendable {
     let pasteboard: PasteboardClient
     let appClip: AppClipBridge
     let resolveClient: ResolveClient
+    let expandClient: ExpandClient
     let shareClient: ShareClient
+    let eventsClient: EventsClient
     let store: KeyValueStore
     let incomingLink: IncomingLink
+}
+
+private func shouldExpand(_ url: String, hosts: [String]) -> Bool {
+    guard let components = URLComponents(string: url), let host = components.host?.lowercased() else {
+        return false
+    }
+    let hostOk: Bool
+    if hosts.isEmpty {
+        hostOk = true
+    } else {
+        hostOk = hosts.contains { prefix in
+            var p = prefix.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            p = p.replacingOccurrences(of: "https://", with: "")
+            p = p.replacingOccurrences(of: "http://", with: "")
+            while p.hasSuffix("/") { p.removeLast() }
+            return host == p || host.hasSuffix(".\(p)") || url.hasPrefix(prefix)
+        }
+    }
+    guard hostOk else { return false }
+    let path = (components.path as NSString).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    guard !path.isEmpty, !path.contains("/") else { return false }
+    return path.range(of: #"^[A-Za-z0-9_-]{4,32}$"#, options: .regularExpression) != nil
+}
+
+private func pathMapOnly(_ url: String) -> ResolvedNavTarget? {
+    guard let components = URLComponents(string: url) else { return nil }
+    var path = components.path
+    if path.isEmpty { path = "/" }
+    if let query = components.percentEncodedQuery, !query.isEmpty {
+        return ResolvedNavTarget(href: "\(path)?\(query)")
+    }
+    return ResolvedNavTarget(href: path)
+}
+
+private func hrefFromExpand(_ result: ExpandResult) -> String {
+    var path = result.destinationPath
+    if !path.hasPrefix("/") { path = "/\(path)" }
+    if result.params.isEmpty { return path }
+    let qs = result.params
+        .map { key, value in
+            let k = key.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? key
+            let v = value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? value
+            return "\(k)=\(v)"
+        }
+        .joined(separator: "&")
+    return "\(path)?\(qs)"
+}
+
+private func withTimeout<T: Sendable>(ms: Int, body: @escaping @Sendable () async -> T?) async -> T? {
+    await withTaskGroup(of: T?.self) { group in
+        group.addTask { await body() }
+        group.addTask {
+            try? await Task.sleep(nanoseconds: UInt64(ms) * 1_000_000)
+            return nil
+        }
+        let first = await group.next() ?? nil
+        group.cancelAll()
+        return first ?? nil
+    }
 }
 
 private actor ResolveGate {
@@ -292,6 +437,18 @@ private final class LockedStore: @unchecked Sendable {
     private var pendingDeferred: DeferredLink?
     private var deferredReplay: DeferredLink?
     private var deferredContinuations: [UUID: AsyncStream<DeferredLink>.Continuation] = [:]
+    private var anonymousId: String?
+
+    func anonymousUserId() -> String {
+        lock.lock()
+        defer { lock.unlock() }
+        if let anonymousId, !anonymousId.isEmpty {
+            return anonymousId
+        }
+        let id = UUID().uuidString
+        anonymousId = id
+        return id
+    }
 
     func configure(_ config: Config) {
         lock.lock()
