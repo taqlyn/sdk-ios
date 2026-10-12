@@ -14,7 +14,7 @@ public func isIosPlatformLink(_ link: DeferredLink) -> Bool {
     switch link.matchType {
     case .clipboard, .appClip, .claim:
         return true
-    case .installReferrer, .none:
+    case .installReferrer, .fingerprint, .none:
         return false
     }
 }
