@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'TaqlynSDK'
-  s.version          = '0.1.0'
+  s.version          = '0.2.0'
   s.summary          = 'Taqlyn iOS SDK for universal and deferred deep linking'
   s.description      = <<-DESC
 Taqlyn iOS SDK provides unified deep link routing, deferred deep linking with
