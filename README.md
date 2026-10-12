@@ -22,14 +22,18 @@ SdkCore.configure(clientId, publicKeyId, options, …)
 SdkCore.createShareLink(destinationPath:)  // ShareLink — in-app sharing
 SdkCore.resolveDeferred()           // DeferredLink?
 SdkCore.resolveClaim(_ token)       // DeferredLink? — authenticated claim path
+SdkCore.resolveShortLink(_ url)     // ExpandResult? — POST /v1/links/expand
+SdkCore.resolveIncomingUrl(_ url)   // ResolvedNavTarget? — await | optimistic
 SdkCore.addLinkListener(_:)         // iOS-only TaqlynLinkListener (UL + clipboard)
 SdkCore.observeLinks()              // AsyncStream<DeferredLink>
-SdkCore.consume(linkId)
+SdkCore.consume(linkId)             // also fires trackOpen
+SdkCore.trackOpen(linkId)
+SdkCore.logEvent(name, data:)
 SdkCore.setReadyForNavigation(ready)
 SdkCore.onOpenURL(url)              // forward Universal Links / custom URLs
 ```
 
-`SdkOptions` accepts optional `linkProcessingMode` (`.all` | `.webOnly` | `.deferredOnly`) and `env`. The control-plane origin is `https://api.taqlyn.com`.
+`SdkOptions` accepts `linkProcessingMode` (`.all` | `.webOnly` | `.deferredOnly`), `env`, and expand fields (`resolveMode`, `fallbackPath`, `hosts`, `timeoutMs`). Do **not** enable probabilistic fingerprint on iOS. The control-plane origin is `https://api.taqlyn.com`.
 
 `DeferredLink` mirrors `packages/sdk-contract`: `url`, `path`, `params`, `linkId`, `matchType`, `isDeferred`, `campaign`.
 
@@ -41,6 +45,8 @@ SdkCore.onOpenURL(url)              // forward Universal Links / custom URLs
 | `Adapters/Pasteboard.swift` | `PasteboardClient.readToken()` | `UIPasteboard` |
 | `Adapters/AppClipBridge.swift` | `AppClipBridge.readInvocation()` | App Clip / App Group (stub) |
 | `Adapters/ResolveClient.swift` | `ResolveClient.resolve()` | `URLSession` `POST /v1/resolve` |
+| `Adapters/ExpandClient.swift` | `ExpandClient.expand()` | `POST /v1/links/expand` |
+| `Adapters/EventsClient.swift` | `trackOpen` / `logEvent` | `/v1/events/*` |
 | `Adapters/KeyValueStore.swift` | `KeyValueStore` | `UserDefaults` |
 
 Sample / app feature modules import `TaqlynSDK` (`SdkCore`) and optionally `TaqlynNavSwiftUI` — never OS clipboard kits.
