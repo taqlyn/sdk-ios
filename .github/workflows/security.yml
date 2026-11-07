@@ -1,0 +1,47 @@
+name: Security (Trivy)
+
+# Fails on fixable HIGH/CRITICAL dependency vulnerabilities. Runs on every push and
+# pull request, and weekly because new CVEs are published against unchanged code.
+# Trivy runs from a pinned container image (no third-party action to trust).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trivy:
+    name: Dependency vulnerabilities
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ github.run_id }}
+          restore-keys: trivy-db-
+
+      - name: Trivy scan
+        run: |
+          mkdir -p "$HOME/.cache/trivy"
+          docker run --rm \
+            -v "$PWD":/src:ro \
+            -v "$HOME/.cache/trivy":/root/.cache/trivy \
+            aquasec/trivy:0.76.2 fs \
+              --scanners vuln \
+              --severity HIGH,CRITICAL \
+              --ignore-unfixed \
+              --exit-code 1 \
+              --skip-dirs '**/node_modules' \
+              /src
