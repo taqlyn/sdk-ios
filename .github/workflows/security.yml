@@ -3,6 +3,7 @@ name: Security (Trivy)
 # Fails on fixable HIGH/CRITICAL dependency vulnerabilities. Runs on every push and
 # pull request, and weekly because new CVEs are published against unchanged code.
 # Trivy runs from a pinned container image (no third-party action to trust).
+# The report is written to the job summary on every run, pass or fail.
 
 on:
   push:
@@ -34,14 +35,48 @@ jobs:
 
       - name: Trivy scan
         run: |
-          mkdir -p "$HOME/.cache/trivy"
+          mkdir -p "$HOME/.cache/trivy" "$RUNNER_TEMP/trivy"
+          set +e
           docker run --rm \
             -v "$PWD":/src:ro \
             -v "$HOME/.cache/trivy":/root/.cache/trivy \
+            -v "$RUNNER_TEMP/trivy":/out \
             aquasec/trivy:0.76.2 fs \
               --scanners vuln \
               --severity HIGH,CRITICAL \
               --ignore-unfixed \
               --exit-code 1 \
               --skip-dirs '**/node_modules' \
-              /src
+              --format table \
+              --output /out/report.txt \
+              /src 2> "$RUNNER_TEMP/trivy/stderr.txt"
+          rc=$?
+          set -e
+
+          {
+            if [ ! -s "$RUNNER_TEMP/trivy/report.txt" ]; then
+              echo "## Trivy: SCAN ERROR"
+              echo
+              echo "The scan did not produce a report (exit code $rc)."
+              echo
+              echo '```'
+              tail -n 40 "$RUNNER_TEMP/trivy/stderr.txt"
+              echo '```'
+              rc=1
+            else
+              if [ "$rc" -eq 0 ]; then
+                echo "## Trivy: PASS - no fixable HIGH/CRITICAL vulnerabilities"
+              else
+                echo "## Trivy: FAIL - fixable HIGH/CRITICAL vulnerabilities found"
+              fi
+              echo
+              echo "Trivy 0.76.2, severity HIGH and CRITICAL, unfixed findings ignored."
+              echo
+              echo '```'
+              head -c 900000 "$RUNNER_TEMP/trivy/report.txt"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          cat "$RUNNER_TEMP/trivy/report.txt" 2>/dev/null || true
+          exit "$rc"
