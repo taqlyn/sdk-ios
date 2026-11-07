@@ -1,10 +1,10 @@
 name: Security (Trivy)
 
-# Fails on fixable HIGH/CRITICAL dependency vulnerabilities. Runs on every push and
-# pull request, and weekly because new CVEs are published against unchanged code.
+# Fails on ANY dependency vulnerability: all severities, unfixed findings included, no
+# ignore rules, examples and sample apps included. Runs on every push and pull request,
+# and weekly because new CVEs are published against unchanged code.
 # Trivy runs from a pinned container image (no third-party action to trust).
 # The report is written to the job summary on every run, pass or fail.
-
 on:
   push:
     branches: [main]
@@ -43,8 +43,6 @@ jobs:
             -v "$RUNNER_TEMP/trivy":/out \
             aquasec/trivy:0.76.2 fs \
               --scanners vuln \
-              --severity HIGH,CRITICAL \
-              --ignore-unfixed \
               --exit-code 1 \
               --skip-dirs '**/node_modules' \
               --format table \
@@ -65,12 +63,12 @@ jobs:
               rc=1
             else
               if [ "$rc" -eq 0 ]; then
-                echo "## Trivy: PASS - no fixable HIGH/CRITICAL vulnerabilities"
+                echo "## Trivy: PASS - no vulnerabilities"
               else
-                echo "## Trivy: FAIL - fixable HIGH/CRITICAL vulnerabilities found"
+                echo "## Trivy: FAIL - vulnerabilities found"
               fi
               echo
-              echo "Trivy 0.76.2, severity HIGH and CRITICAL, unfixed findings ignored."
+              echo "Trivy 0.76.2, all severities, unfixed findings included, no ignore rules."
               echo
               echo '```'
               head -c 900000 "$RUNNER_TEMP/trivy/report.txt"
